@@ -209,7 +209,64 @@ this.createjs = this.createjs||{};
 		}
 	};
 
+	/**
+	 * Advances the tween to a specified position.
+	 * 
+	 * BEGIN modifications to fix MCs getting paused when timeline completes and to be paused on single frame MCs
+	 * below is part of a fix to make sure that MC gets paused when timeline completes
+	 * and modification to fix getBounds returning error if nominal bounds is null and causes
+	 * first frame of frameBounds to be null getting through and causing error
+	 * @method setPosition
+	 * @param {Number} rawPosition The raw position to seek to in milliseconds (or ticks if useTicks is true).
+	 * @param {Boolean} [ignoreActions=false] If true, do not run any actions that would be triggered by this operation.
+	 * @param {Boolean} [jump=false] If true, only actions at the new position will be run. If false, actions between the old and new position are run.
+	 * @param {Function} [callback] Primarily for use with MovieClip, this callback is called after properties are updated, but before actions are run.
+	 */
+	p.setPosition = function(rawPosition, ignoreActions, jump, callback) {
+		var d=this.duration, loopCount=this.loop, prevRawPos = this.rawPosition;
+		var loop=0, t=0, end=false;
+		
+		// normalize position:
+		if (rawPosition < 0) { rawPosition = 0; }
+		
+		if (d === 0) {
+			// deal with 0 length tweens.
+			end = true;
+			if (prevRawPos !== -1) { return end; } // we can avoid doing anything else if we're already at 0.
+		} else {
+			loop = rawPosition/d|0;
+			t = rawPosition-loop*d;
+			
+			end = (loopCount !== -1 && rawPosition >= loopCount*d+d);
+			if (end) { rawPosition = (t=d)*(loop=loopCount)+d; }
+			if (rawPosition === prevRawPos) { return end; } // no need to update
+			
+			var rev = !this.reversed !== !(this.bounce && loop%2); // current loop is reversed
+			if (rev) { t = d-t; }
+		}
+		
+		// set this in advance in case an action modifies position:
+		this.position = t;
+		this.rawPosition = rawPosition;
+		
+		this._updatePosition(jump, end);
 
+		// add _end flag to signify to MC during the callback to set paused
+		if (end) {
+			this.paused = true; 
+			this._end = true;
+		}
+		else
+			this._end = undefined;
+
+		callback&&callback(this);
+		
+		if (!ignoreActions) { this._runActions(prevRawPos, rawPosition, jump, !jump && prevRawPos === -1); }
+		
+		this.dispatchEvent("change");
+		if (end) { this.dispatchEvent("complete"); }
+	};
+	
 	createjs.Timeline = createjs.promote(Timeline, "AbstractTween");
 
 }());
