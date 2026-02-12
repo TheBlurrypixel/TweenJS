@@ -620,6 +620,21 @@ this.createjs = this.createjs||{};
 	p.s = p.set;
 
 	/**
+	 * Mod addded function
+	 * 
+	 * Returns this Tween's TweenStep according to index
+	 * @method getStepByIndex
+	 * @param {Number} index
+	 * @return {TweenStep} the TweenStep on this Tween that matches the given index
+	 */
+	p.getStepByIndex = function(index) {
+		var step = this._stepHead.next;
+		while(step && step.index != index) { step = step.next; }
+		return step;
+	};
+
+
+	/**
 	 * Returns a string representation of this object.
 	 * @method toString
 	 * @return {String} a string representation of the instance.
@@ -670,6 +685,7 @@ this.createjs = this.createjs||{};
 			this._updateTargetProps(step, ratio, end);
 		}
 		this._stepPosition = step ? t-step.t : 0;
+		this._stepIndex = step && step.index; // Mod adding prop that will store current step index
 	};
 	
 	/**

@@ -177,6 +177,10 @@ this.createjs = this.createjs||{};
 	};
 
 	/**
+	 * Modified to grab output from _ratioToPositionData and assign subL and t to guideData
+	 * subL is the index of the subLine most traveled down and t is the subweighting for a portion of that curve
+	 * this mod was made to accomodate drawing of the guide curve
+	 * 
 	 * Called before a property is updated by the tween.
 	 * See {{#crossLink "SamplePlugin/change"}}{{/crossLink}} for more info.
 	 * @method change
@@ -207,7 +211,9 @@ this.createjs = this.createjs||{};
 			return createjs.Tween.IGNORE;
 		}
 
-		s._ratioToPositionData(ratio, guideData, tween.target);
+		var output = s._ratioToPositionData(ratio, guideData, tween.target);
+		guideData._t = output._t;
+		guideData._subL = output._subL;
 	};
 
 // public methods
@@ -386,6 +392,8 @@ this.createjs = this.createjs||{};
 	};
 
 	/**
+	 * Modified to accomodate draw tracing methods adding _t and _subL to output and used in change method
+	 * 
 	 * Convert a percentage along the line into, a local line (start, control, end) t-value for calculation.
 	 * @param {Number} ratio The (euclidean distance) percentage into the whole curve.
 	 * @param {Object} guideData All the information describing the guide to be followed.
@@ -411,6 +419,8 @@ this.createjs = this.createjs||{};
 		}
 		if(target === undefined) { target = l-1;  look -= test; }
 
+		output._subL = target; // Modified saving the subLine index for use in draw tracing methods used in change method
+
 		// find midline weighting
 		var subLines = lineSegments[target].weightings;
 		var portion = test;
@@ -426,6 +436,8 @@ this.createjs = this.createjs||{};
 		// take the distance we've covered in our ratio, and scale it to distance into the weightings
 		t = (i/precision) + (((effRatio-look) / test) * (1/precision));
 
+		output._t = t; // Modified saving the subLine weighted distance for use in draw tracing methods used in change method
+		
 		// position
 		var pathData = guideData.path;
 		s._getParamsForCurve(
