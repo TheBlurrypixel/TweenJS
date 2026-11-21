@@ -689,6 +689,8 @@ this.createjs = this.createjs||{};
 	};
 	
 	/**
+	 * mod to fix interpolated "loop" prop when using ease and interpolated "mode" string values
+	 * 
 	 * @method _updateTargetProps
 	 * @param {Object} step
 	 * @param {Number} ratio
@@ -698,9 +700,12 @@ this.createjs = this.createjs||{};
 	p._updateTargetProps = function(step, ratio, end) {
 		if (this.passive = !!step.passive) { return; } // don't update props.
 		
+		var target = this.target;
+
 		var v, v0, v1, ease;
 		var p0 = step.prev.props;
 		var p1 = step.props;
+		var uneased = ratio;
 		if (ease = step.ease) { ratio = ease(ratio,0,1,1); }
 		
 		var plugins = this._plugins;
@@ -708,13 +713,20 @@ this.createjs = this.createjs||{};
 			v0 = p0[n];
 			v1 = p1[n];
 			
-			// values are different & it is numeric then interpolate:
-			if (v0 !== v1 && (typeof(v0) === "number")) {
-				v = v0+(v1-v0)*ratio;
+			// when loop == -1 then infinite loop anything not exactly -1 is interpolated
+			// therefore we need to make special exception for loop because the ratio returned by ease will create fractional values, i.e. -1.00016
+			if (n === "loop" && (
+				target instanceof createjs.MovieClip ||
+				target instanceof createjs.Tween ||
+				target instanceof createjs.Timeline
+			)) {
+				v = uneased >= 1 ? v1 : v0;
+			} else if (v0 !== v1 && typeof v0 === "number" && typeof v1 === "number") { // both endpoints must be numeric for interpolation, i.e. no string interpolation
+				v = v0 + (v1 - v0) * ratio;
 			} else {
-				v = ratio >= 1 ? v1 : v0;
+				v = uneased >= 1 ? v1 : v0;
 			}
-			
+
 			if (plugins) {
 				for (var i=0,l=plugins.length;i<l;i++) {
 					var value = plugins[i].change(this, step, n, v, ratio, end);
@@ -722,7 +734,7 @@ this.createjs = this.createjs||{};
 					if (value !== undefined) { v = value; }
 				}
 			}
-			this.target[n] = v;
+			target[n] = v;
 		}
 
 	};
